@@ -3,6 +3,7 @@
 import argparse
 import os
 import cv2
+import imageio
 import numpy as np
 from tqdm import tqdm
 from preprocessing import parse_annotation
@@ -54,7 +55,7 @@ def _main_(args):
     #   Load trained weights
     ###############################    
 
-    print weights_path
+    print(weights_path)
     yolo.load_weights(weights_path)
 
     ###############################
@@ -70,33 +71,28 @@ def _main_(args):
     if image_path[-4:] == '.mp4':
         video_out = image_path[:-4] + '_detected' + image_path[-4:]
 
-        video_reader = cv2.VideoCapture(image_path)
+        video_reader = imageio.get_reader(image_path,  'ffmpeg')
 
-        nb_frames = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        frame_h = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        frame_w = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
+        nb_frames = video_reader._meta['nframes']
+        frame_h = 480
+        frame_w = 640
 
-        video_writer = cv2.VideoWriter(video_out,
-                               cv2.VideoWriter_fourcc(*'MPEG'), 
-                               50.0, 
-                               (frame_w, frame_h))
+        video_writer = imageio.get_writer(video_out, fps=20)
 
-        for i in tqdm(range(nb_frames)):
-            _, image = video_reader.read()
+        for i in tqdm(range(0,nb_frames,3)):
+            image = video_reader.get_data(i)
             
             boxes = yolo.predict(image)
             image = draw_boxes(image, boxes, config['model']['labels'])
 
-            video_writer.write(np.uint8(image))
-
-        video_reader.release()
-        video_writer.release()  
+            video_writer.append_data(np.uint8(image))
+        video_writer.close()
     else:
         image = cv2.imread(image_path)
         boxes = yolo.predict(image)
         image = draw_boxes(image, boxes, config['model']['labels'])
 
-        print len(boxes), 'boxes are found'
+        print(len(boxes), 'boxes are found')
 
         cv2.imwrite(image_path[:-4] + '_detected' + image_path[-4:], image)
 

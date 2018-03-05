@@ -6,7 +6,7 @@ import imgaug as ia
 from imgaug import augmenters as iaa
 from keras.utils import Sequence
 import xml.etree.ElementTree as ET
-from utils import BoundBox, normalize, bbox_iou
+from .utils import BoundBox, normalize, bbox_iou
 
 def parse_annotation(ann_dir, img_dir, labels=[]):
     all_imgs = []
@@ -15,6 +15,7 @@ def parse_annotation(ann_dir, img_dir, labels=[]):
     for ann in sorted(os.listdir(ann_dir)):
         img = {'object':[]}
         
+        print(ann_dir + ann)
         tree = ET.parse(ann_dir + ann)
         
         for elem in tree.iter():
@@ -73,7 +74,7 @@ class BatchGenerator(Sequence):
         self.norm    = norm
 
         self.counter = 0
-        self.anchors = [BoundBox(0, 0, config['ANCHORS'][2*i], config['ANCHORS'][2*i+1]) for i in range(len(config['ANCHORS'])/2)]
+        self.anchors = [BoundBox(0, 0, config['ANCHORS'][2*i], config['ANCHORS'][2*i+1]) for i in range(len(config['ANCHORS'])//2)]
 
         ### augmentors by https://github.com/aleju/imgaug
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
@@ -234,6 +235,7 @@ class BatchGenerator(Sequence):
 
     def aug_image(self, train_instance, jitter):
         image_name = train_instance['filename']
+        image_name = image_name.replace('photos', 'photos/')
         image = cv2.imread(image_name)
         h, w, c = image.shape
         
